@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"unicode/utf8"
 	"sync/atomic"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
@@ -8789,8 +8790,12 @@ func (c *Checker) resolveCallExpression(node *ast.Node, candidatesOutArray *[]*S
 			if len(node.Arguments()) == 1 {
 				text := ast.GetSourceFileOfNode(node).Text()
 				options := scanner.SkipTriviaOptions{StopAfterLineBreak: true}
-				if stringutil.IsLineBreak(rune(text[scanner.SkipTriviaEx(text, node.Expression().End(), &options)-1])) {
-					relatedInformation = createDiagnosticForNode(node.Expression(), diagnostics.Are_you_missing_a_semicolon)
+				end := scanner.SkipTriviaEx(text, node.Expression().End(), &options)
+				if end > node.Expression().End() {
+					ch, _ := utf8.DecodeLastRuneInString(text[:end])
+					if stringutil.IsLineBreak(ch) {
+						relatedInformation = createDiagnosticForNode(node.Expression(), diagnostics.Are_you_missing_a_semicolon)
+					}
 				}
 			}
 			c.invocationError(node.Expression(), apparentType, SignatureKindCall, relatedInformation)
